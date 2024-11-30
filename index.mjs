@@ -412,7 +412,7 @@ export class ResponseMessage extends Message {
   /**
    * Constructs a new ResponseMessage.
    * 
-   * @param {int} unspecified_byte a variable byte that usually somewhat seems to be related to the ``unspecified_byte`` value of the previously-sent :class:`PingMessage`, but not always, so it is captured but otherwise ignored.
+   * @param {int} unspecified_byte a variable byte that usually somewhat seems to be related to the ``unspecified_byte`` value of the previously-sent `PingMessage`, but not always, so it is captured but otherwise ignored.
    * @param {int} address The device address the message is intended for
    */
   constructor(unspecified_byte, address=0x01) {
@@ -442,5 +442,117 @@ export class ResponseMessage extends Message {
       0x00
     ]
   }
+
+}
+
+/**
+  A `DisplayMessage` object represents a single, cohesive set of information
+  displayed over a sequence of `Page`s.
+  Once the sequence is exhausted, it repeats indefinitely
+  until a new message is sent to the display
+  (or the display times out & clears,
+  which can be avoided by calling `.ping()` on the display).
+
+  `DisplayMessage` objects are typically built from a string using `DisplayMessage.fromStr`
+  rather than constructed directly.
+ */
+export class DisplayMessage extends Message {
+
+  #pages
+  #address
+
+  static _PAGE_SEP = '|'
+  static _PAGE_END = 0x0D
+  static _PAGE_START = 0x01
+
+  constructor(pages, address) {
+    super()
+    this.#pages = pages
+    this.#address = address
+  }
+
+  /**
+   * 
+   * @returns {Page[]}
+   */
+  getPages() { return this.#pages.slice(0) }
+
+  static marker(address) {
+    return [ address, 0x44, 0x00 ]
+  }
+
+  /**
+    Construct a `DisplayMessage` object from a string representation.
+
+    @param {string} string a string in one of the following formats:
+    -   ``<page_str>``
+    -   ``<page_str>|<page_str>``
+    -   ``<page_str>|<page_str>|<page_str>``
+    -   *(etc)*
+
+    where each ``<page_str>`` is a string representation of a `Page` object,
+    as accepted by `Page.from_str`,
+    and is separated from other `Page` representations by ``|``.
+
+    For reference, such a string can also be obtained
+    by converting an existing `DisplayMessage` object to a string
+    using `str() <str>`:
+
+    >>> page1 = Page(animate=PageAnimate.VSCROLL, delay=40, text='12:34 FUNKYTOWN~5_Limited Express')
+    >>> page2 = Page(animate=PageAnimate.HSCROLL, delay=0, text='_Stops all stations except East Richard')
+    >>> str(DisplayMessage([page1, page2]))
+    'V40^12:34 FUNKYTOWN~5_Limited Express|H0^_Stops all stations except East Richard'
+
+    Where any page string fails to specify an ``animate`` or ``delay`` value,
+    these defaults will be applied:
+
+    - `Animate.VSCROLL` & ``delay=40`` for the first page; and
+    - `Animate.HSCROLL` & ``delay=0`` for subsequent pages.
+
+    @param {int} address The device address this DisplayMessage is intended for
+
+    :raise ValueError:
+      if the text of any page contains unusable characters,
+      or if a valid Animate value is not given,
+      or if the delay is outside the permissible range.
+   */
+  static fromStr(string, address) {
+    return new DisplayMessage(
+      string.split(this._PAGE_SEP)
+      .map((string, i) => Page.fromStr(
+        string,
+        i === 0 ? PageAnimate.VSCROLL : PageAnimate.HSCROLL,
+        i === 0 ? 40 : 0
+      )),
+      address
+    )
+  }
+
+  static fromBytes(bytes, address) {
+    let expectedMarker = this.marker(address)
+    if (!(bytes[0] === expectedMarker[0] && bytes[1] === expectedMarker[1] && bytes[2] === expectedMarker[2])) throw new RangeError('Incorrect header for DisplayMessage')
+    let startIndex = expectedMarker.length
+    let pages = []
+    let page = []
+
+    for (let index = startIndex; index < bytes.length; index++) {
+      let byte = bytes[index]
+      if (byte == this._PAGE_END) { // end of page marker
+        if (!page.length) throw new RangeError(`Unexpected byte value ${byte} at index ${index}`)
+        pages.push(page)
+        page = []
+        if (index < bytes.length - 1) {
+          // Readahead to get the next PAGE_START if available
+          if (bytes[++index] !== this._PAGE_START) throw new RangeError(`Unexpected byte value ${byte} at index ${index}`)
+        }
+      } else page.push(byte)
+    }
+
+    if (page.length) throw new RangeError('Unexpected end of data')
+
+    return new DisplayMessage(pages.map(page => Page.fromBytes(Buffer.from(page))), address)
+  }
+
+  toBytes() {}
 
 }
