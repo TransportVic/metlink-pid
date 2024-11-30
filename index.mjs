@@ -321,3 +321,80 @@ export class Page {
   }
 
 }
+
+export class Message {
+
+  static marker(address) {}
+
+  static fromBytes(bytes, address) {}
+
+  toBytes() {}
+
+}
+
+export class PingMessage extends Message {
+
+  #unspecified_byte
+  #address
+
+  constructor(unspecified_byte=0x6F, address=0x01) {
+    this.#unspecified_byte = unspecified_byte
+    this.#address = address
+  }
+
+  static marker(address) {
+    return [ address, 0x50 ]
+  }
+
+  static fromBytes(bytes, address) {
+    if (bytes.length < 3) throw new RangeError('Unexpected end of data')
+    if (bytes.length > 3) throw new RangeError('Unexpected data')
+
+    let expectedMarker = this.marker(address)
+    if (!(bytes[0] === expectedMarker[0] && bytes[1] === expectedMarker[1])) throw new RangeError('Incorrect header for PingMessage')
+    return new PingMessage(bytes[2], address)
+  }
+
+  toBytes() {
+    return [
+      ...this.constructor.marker(this.#address),
+      this.#unspecified_byte
+    ]
+  }
+
+}
+
+export class ResponseMessage extends Message {
+
+  #unspecified_byte
+  #address
+
+  constructor(unspecified_byte, address=0x01) {
+    this.#unspecified_byte = unspecified_byte
+    this.#address = address
+  }
+
+  static marker(address) {
+    return [ address, 0x52 ]
+  }
+
+  static fromBytes(bytes, address) {
+    if (bytes.length < 4) throw new RangeError('Unexpected end of data')
+    if (bytes.length > 4) throw new RangeError('Unexpected data')
+
+    let expectedMarker = this.marker(address)
+    if (!(bytes[0] === expectedMarker[0] && bytes[1] === expectedMarker[1])) throw new RangeError('Incorrect header for ResponseMessage')
+    if (bytes[3] !== 0x00) throw new RangeError(`Unexpected value ${bytes[3].toString(16)} at position 3`)
+
+    return new ResponseMessage(bytes[2], address)
+  }
+
+  toBytes() {
+    return [
+      ...this.constructor.marker(this.#address),
+      this.#unspecified_byte,
+      0x00
+    ]
+  }
+
+}
