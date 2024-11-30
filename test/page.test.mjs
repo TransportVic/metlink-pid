@@ -91,6 +91,21 @@ describe('The Page constants', () => {
       let page = Page.fromStr('V35^_Hello World')
       expect([ ...page.toBytes() ]).to.deep.equal(expected)
     })
+
+    it('Should convert the right justification into space fillers', () => {
+      let expected = [
+        0x1D, // animate byte
+        0x00, // offset byte
+        35, // delay byte
+        0x00,
+        0x48, 0x65, 0x6c, 0x6c, 0x6f, 0x20, 0x57, 0x6f, 0x72, 0x6c, 0x64, // Text data
+        0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20,
+        0xff, 0xff, // Padding
+        0x41 // A on the right
+      ]
+      let page = Page.fromStr('V35^Hello World~A')
+      expect([ ...page.toBytes() ]).to.deep.equal(expected)
+    })
   })
 
   describe('The fromBytes method', () => {

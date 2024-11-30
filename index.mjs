@@ -133,8 +133,9 @@ export class Page {
     0xD2: 6,  // ━ 'BOX DRAWINGS HEAVY HORIZONTAL'
     0x5F: 6,  // █ 'FULL BLOCK'
     0xA3: 6,  // ▔ 'UPPER ONE EIGHTH BLOCK'
-    ...(Object.keys(this._CHARS_BY_WIDTH).reduce((acc, width) => {
-      let chars = this._CHARS_BY_WIDTH[width]
+    ...(Object.keys(this._CHARS_BY_WIDTH).reduce((acc, widthKey) => {
+      let chars = this._CHARS_BY_WIDTH[widthKey]
+      let width = parseInt(widthKey)
       for (let char of chars) acc[char] = width
 
       return acc
@@ -277,8 +278,8 @@ export class Page {
     let delayByte = this.#delay
     let textBytes = this.#text.slice(offsetByte).split(this.constructor._NEWLINE_CHAR)
       .map(line => {
-        if (!line.includes(this.constructor._RIGHT_CHAR_ENCODED)) return this.constructor.encodeText(line)
-        let [ left, right ] = line.split(this.constructor._RIGHT_CHAR_ENCODED)
+        if (!line.includes(this.constructor._RIGHT_CHAR_DECODED)) return this.constructor.encodeText(line)
+        let [ left, right ] = line.split(this.constructor._RIGHT_CHAR_DECODED)
 
         let leftWidth = this.#pixelWidth(left)
         let rightWidth = this.#pixelWidth(right)
@@ -298,11 +299,11 @@ export class Page {
 
         return Buffer.from([
           ...this.constructor.encodeText(left),
-          ...padding,
+          ...Buffer.from(padding, 'binary'),
           ...this.constructor.encodeText(right)
         ])
       })
-      .reduce((acc, e) => [...acc, this.constructor._NEWLINE_BYTESEQ, ...e] ,[]).slice(1)
+      .reduce((acc, e) => [...acc, this.constructor._NEWLINE_BYTESEQ, ...e], []).slice(1)
 
     return Buffer.from([
       animateByte,
