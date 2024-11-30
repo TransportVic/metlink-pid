@@ -86,6 +86,26 @@ export class Page {
     0xA5: '\u2594',
   }
 
+  static _ATTRS_SEP = '^'
+  static _RIGHT_CHAR_DECODED = '~'
+  static _RIGHT_CHAR_ENCODED = '\\R'
+  static _NEWLINE_CHAR = '_'
+  static _NEWLINE_BYTESEQ = 0x0A
+  static _STR_RE = /^(?:(?<animate>[A-Za-z]?)(?<delay>\d*)\^)?(?<text>.*)$/s
+
+  static _ANIMATE_ENCODING = {
+    [PageAnimate.NONE]: 0x00,
+    [PageAnimate.VSCROLL]: 0x1D,
+    [PageAnimate.HSCROLL]: 0x2F
+  }
+
+  static _ANIMATE_DECODING = {
+    ...(Object.keys(Page._ANIMATE_ENCODING).reduce((acc, e) => {
+      acc[Page._ANIMATE_ENCODING[e]] = e
+      return acc
+    }, {}))
+  }
+
   /**
    A :`Page` object represents one "screen" of information in a `DisplayMessage`.
 
