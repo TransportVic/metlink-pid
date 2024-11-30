@@ -292,10 +292,7 @@ export class Page {
           paddingWidth -= spaceWidth
         }
 
-        while (paddingWidth > 0) {
-          padding += '\xff'
-          paddingWidth -= 1
-        }
+        while (paddingWidth-- > 0) padding += '\xff'
 
         return Buffer.from([
           ...this.constructor.encodeText(left),
