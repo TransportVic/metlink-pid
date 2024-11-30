@@ -118,6 +118,31 @@ export class Page {
     }, {}))
   }
 
+  static _CHARS_BY_WIDTH = {
+    2: '\'',
+    3: '.!,()',
+    4: 'I1: il<>;',
+    5: '0-jk?-=',
+    6: 'ABCDEFGHJKLMNOPQRSTUVWXYZ23456789abcdefghmnopqrstuvwxyz/\\*&'
+  }
+
+  static _WIDTHS_BY_CHAR = {
+    0x8F: 2,  // · 'MIDDLE DOT'
+    0xD3: 3,  // • 'BULLET'
+    0x97: 6,  // ─ 'BOX DRAWINGS LIGHT HORIZONTAL'
+    0xD2: 6,  // ━ 'BOX DRAWINGS HEAVY HORIZONTAL'
+    0x5F: 6,  // █ 'FULL BLOCK'
+    0xA3: 6,  // ▔ 'UPPER ONE EIGHTH BLOCK'
+    ...(Object.keys(this._CHARS_BY_WIDTH).reduce((acc, width) => {
+      let chars = this._CHARS_BY_WIDTH[width]
+      for (let char of chars) acc[char] = width
+
+      return acc
+    }, {}))
+  }
+
+  static _DISPLAY_WIDTH = 120
+
   /**
    A :`Page` object represents one "screen" of information in a `DisplayMessage`.
 
@@ -251,8 +276,33 @@ export class Page {
     let offsetByte = this.#text.match(/^(_+)/)?.[0].length || 0
     let delayByte = this.#delay
     let textBytes = this.#text.slice(offsetByte).split(this.constructor._NEWLINE_CHAR)
-      .map(line => this.constructor.encodeText(line.replace(this.constructor._RIGHT_CHAR_DECODED, this.constructor._RIGHT_CHAR_ENCODED)))
-      .reduce((acc, e) => [...acc, 0x0A, ...e] ,[]).slice(1)
+      .map(line => {
+        if (!line.includes(this.constructor._RIGHT_CHAR_ENCODED)) return this.constructor.encodeText(line)
+        let [ left, right ] = line.split(this.constructor._RIGHT_CHAR_ENCODED)
+
+        let leftWidth = this.#pixelWidth(left)
+        let rightWidth = this.#pixelWidth(right)
+        let paddingWidth = this.constructor._DISPLAY_WIDTH - 2 - leftWidth - rightWidth
+        let padding = ''
+        let spaceWidth = this.constructor._WIDTHS_BY_CHAR[' ']
+
+        while (paddingWidth >= spaceWidth) {
+          padding += ' '
+          paddingWidth -= spaceWidth
+        }
+
+        while (paddingWidth > 0) {
+          padding += '\xff'
+          paddingWidth -= 1
+        }
+
+        return Buffer.from([
+          ...this.constructor.encodeText(left),
+          ...padding,
+          ...this.constructor.encodeText(right)
+        ])
+      })
+      .reduce((acc, e) => [...acc, this.constructor._NEWLINE_BYTESEQ, ...e] ,[]).slice(1)
 
     return Buffer.from([
       animateByte,
@@ -261,6 +311,15 @@ export class Page {
       0x00,
       ...textBytes
     ])
+  }
+
+  #pixelWidth(string) {
+    let width = 0
+    for (let char of string) {
+      if (!(char in this.constructor._WIDTHS_BY_CHAR)) throw new RangeError(`Unknown width for character ${char}`)
+      width += this.constructor._WIDTHS_BY_CHAR[char]
+    }
+    return width
   }
 
   static fromBytes(bytes) {
