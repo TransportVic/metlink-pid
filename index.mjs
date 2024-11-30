@@ -625,7 +625,7 @@ export class PID {
    */
   static forDevice(port, ignoreResponses, address) {
     return new PID(
-      new SerialPort({ path: port, baudRate: 9600, autoOpen: false }),
+      new SerialPort({ path: port, baudRate: 9600 }),
       ignoreResponses,
       address
     )
@@ -662,7 +662,7 @@ export class PID {
     try {
       decode(data)
     } catch (e) {
-      data = encode(Buffer.from([ ...data, crc(data) ]))
+      data = encode(Buffer.from([ ...data, ...crc(data) ]))
     }
 
     this.#serial.write(data)
