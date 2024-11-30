@@ -290,7 +290,7 @@ export class Page {
   }
 
   /**
-   Convert a string of characters into a string of display-level bytes. Called from the :meth:`to_bytes` method.
+   Convert a string of characters into a string of display-level bytes. Called from the `to_bytes` method.
    * @param {string} text The string for display
    */
   static encodeText(text) {
@@ -322,21 +322,52 @@ export class Page {
 
 }
 
+/**
+  The `Message` class is an :term:`abstract base class`
+  of the `DisplayMessage`, `PingMessage`, and `ResponseMessage` classes.
+  Its existence allows for simplified implementation & return typing of the `inspect` function.
+*/
 export class Message {
 
+  /**
+    The `bytes` that a raw byte representation must start with in order to possibly be an instance of this `Message` subclass.
+   * @param {int} address The address of the target device this `Message` is for
+   */
   static marker(address) {}
 
+  /**
+    Constructs an instance of this `Message` subclass from a raw byte representation (not including the CRC-checksumming and packet-framing required for transmission).
+   * @param {Buffer} bytes A sequence of bytes forming the message
+   * @param {int} address The address of the device the bytes were read from
+   */
   static fromBytes(bytes, address) {}
 
+  /**
+    Construct a raw byte representation of this `Message` subclass (not including the CRC-checksumming and packet-framing required for transmission).
+   */
   toBytes() {}
 
 }
 
+/**
+  A `PingMessage` exists as `Message` to send to the display with no visual effect,
+  but which impedes the automatic clearing of the display
+  (which otherwise occurs after approximately one minute of inactivity).
+
+  `PingMessage` objects are exclusively constructed and sent by the `PID.ping` method,
+  but they exist as a class in case their raw byte representations are passed to the `inspect` function.
+ */
 export class PingMessage extends Message {
 
   #unspecified_byte
   #address
 
+  /**
+   * Constructs a new PingMessage.
+   * 
+   * @param {int} unspecified_byte A byte that seems to have no effect if changed, but in deployment is typically ``0x6F``.
+   * @param {int} address The device address the message is intended for
+   */
   constructor(unspecified_byte=0x6F, address=0x01) {
     this.#unspecified_byte = unspecified_byte
     this.#address = address
@@ -364,11 +395,26 @@ export class PingMessage extends Message {
 
 }
 
+/**
+  A `ResponseMessage` represents a response received from the display
+  after a transmission to it.
+
+  `ResponseMessage` objects are not intended to be sent to the display.
+  They exist as a class in order to be recognised by the `inspect` function,
+  which is used internally by `PID.send` to verify acknowledgement from the display
+  following the sending of a message.
+ */
 export class ResponseMessage extends Message {
 
   #unspecified_byte
   #address
 
+  /**
+   * Constructs a new ResponseMessage.
+   * 
+   * @param {int} unspecified_byte a variable byte that usually somewhat seems to be related to the ``unspecified_byte`` value of the previously-sent :class:`PingMessage`, but not always, so it is captured but otherwise ignored.
+   * @param {int} address The device address the message is intended for
+   */
   constructor(unspecified_byte, address=0x01) {
     this.#unspecified_byte = unspecified_byte
     this.#address = address
