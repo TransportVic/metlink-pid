@@ -429,6 +429,7 @@ export class PingMessage extends Message {
    * @param {int} address The device address the message is intended for
    */
   constructor(unspecified_byte=0x6F, address=0x01) {
+    super()
     this.#unspecified_byte = unspecified_byte
     this.#address = address
   }
@@ -476,6 +477,7 @@ export class ResponseMessage extends Message {
    * @param {int} address The device address the message is intended for
    */
   constructor(unspecified_byte, address=0x01) {
+    super()
     this.#unspecified_byte = unspecified_byte
     this.#address = address
   }
@@ -653,6 +655,8 @@ export class PID {
   #ignoreResponses
   #address
 
+  #readBuffer
+
   /**
    * Constructs a new PID instance.
    * 
@@ -664,6 +668,13 @@ export class PID {
     this.#serial = serial
     this.#ignoreResponses = ignoreResponses
     this.#address = address
+
+    this.#readBuffer = []
+
+    serial.on('data', data => {
+      let parsedData = [ ...data ].map(char => (0xFF - char) >> 1)
+      this.#readBuffer.push(...parsedData)
+    })
   }
 
   /**
@@ -723,11 +734,18 @@ export class PID {
       data = encode(Buffer.from([ ...data, ...crc(data) ]))
     }
 
-    await new Promise(r => this.#serial.write(data, r))
+    this.#serial.write(data)
+    await new Promise(r => this.#serial.drain(r))
+
+    if (!this.#ignoreResponses && false) {
+      await new Promise(r => setTimeout(r), 100)
+      let response = verify(decode(Buffer.from(this.#readBuffer)))
+      this.#readBuffer = []
+    }
   }
 
   async ping() {
-    await self.send(new PingMessage(undefined, this.#address))
+    await this.send(new PingMessage(undefined, this.#address))
   }
 
   async close() {
