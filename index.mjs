@@ -87,8 +87,8 @@ export class Page {
     so it should never be assumed to be possible.
    */
   static _TEXT_DECODING = {
-    ...(Object.keys(Page._TEXT_ENCODING).reduce((acc, e) => {
-      acc[Page._TEXT_ENCODING[e]] = e
+    ...(Object.keys(this._TEXT_ENCODING).reduce((acc, e) => {
+      acc[this._TEXT_ENCODING[e]] = e
       return acc
     }, {})),
     0x98: '\u2500',
@@ -110,8 +110,8 @@ export class Page {
   }
 
   static _ANIMATE_DECODING = {
-    ...(Object.keys(Page._ANIMATE_ENCODING).reduce((acc, e) => {
-      acc[Page._ANIMATE_ENCODING[e]] = e
+    ...(Object.keys(this._ANIMATE_ENCODING).reduce((acc, e) => {
+      acc[this._ANIMATE_ENCODING[e]] = e
       return acc
     }, {}))
   }
@@ -235,7 +235,7 @@ export class Page {
     @returns {string} A string, that when passed to `Page.from_str` will yield an equivalent `Page` object to this one.
    */
   toString() {
-    return this.#animate.toString() + this.#delay + Page._ATTRS_SEP + this.#text
+    return this.#animate.toString() + this.#delay + this.constructor._ATTRS_SEP + this.#text
   }
 
   /**
@@ -245,11 +245,11 @@ export class Page {
     when preparing to `PID.send()` a complete `DisplayMessage` to the display.
    */
   toBytes() {
-    let animateByte = Page._ANIMATE_ENCODING[this.#animate.toString()]
+    let animateByte = this.constructor._ANIMATE_ENCODING[this.#animate.toString()]
     let offsetByte = this.#text.match(/^(_+)/)?.[0].length || 0
     let delayByte = this.#delay
-    let textBytes = this.#text.slice(offsetByte).split(Page._NEWLINE_CHAR)
-      .map(line => Page.encodeText(line.replace(Page._RIGHT_CHAR_DECODED, Page._RIGHT_CHAR_ENCODED)))
+    let textBytes = this.#text.slice(offsetByte).split(this.constructor._NEWLINE_CHAR)
+      .map(line => this.constructor.encodeText(line.replace(this.constructor._RIGHT_CHAR_DECODED, this.constructor._RIGHT_CHAR_ENCODED)))
       .reduce((acc, e) => [...acc, 0x0A, ...e] ,[]).slice(1)
 
     return Buffer.from([
@@ -263,18 +263,18 @@ export class Page {
 
   static fromBytes(bytes) {
     if (bytes.length < 4) throw new RangeError('Not enough bytes for a Page')
-    if (!(bytes[0] in Page._ANIMATE_DECODING)) throw new RangeError(`Unexpected animate byte value ${bytes[0].toString(16)} at index 0`)
-    let animate = Page._ANIMATE_DECODING[bytes[0]]
+    if (!(bytes[0] in this._ANIMATE_DECODING)) throw new RangeError(`Unexpected animate byte value ${bytes[0].toString(16)} at index 0`)
+    let animate = this._ANIMATE_DECODING[bytes[0]]
     let offset = bytes[1]
     let delay = bytes[2]
     if (bytes[3] !== 0x00) throw new RangeError(`unexpected byte value ${bytes_in[3].toString(16)} at index 3`)
 
     let rawText = [ ...bytes.subarray(4) ]
-    while (rawText[rawText.length - 1] === Page._NEWLINE_BYTESEQ) rawText.pop() // Right trim the newline characters
+    while (rawText[rawText.length - 1] === this._NEWLINE_BYTESEQ) rawText.pop() // Right trim the newline characters
     let lines = []
     let line = []
     for (let char of rawText) {
-      if (char === Page._NEWLINE_BYTESEQ) {
+      if (char === this._NEWLINE_BYTESEQ) {
         lines.push(line)
         line = []
       } else line.push(char)
@@ -282,9 +282,9 @@ export class Page {
 
     lines.push(line)
 
-    let text = Array(offset).fill(Page._NEWLINE_CHAR).join('') + lines
-      .map(line => Page.decodeText(line).replace(/ +$/).replace(Page._RIGHT_CHAR_ENCODED, Page._RIGHT_CHAR_DECODED))
-      .join(Page._NEWLINE_CHAR)
+    let text = Array(offset).fill(this._NEWLINE_CHAR).join('') + lines
+      .map(line => this.decodeText(line).replace(/ +$/).replace(this._RIGHT_CHAR_ENCODED, this._RIGHT_CHAR_DECODED))
+      .join(this._NEWLINE_CHAR)
 
     return new Page(animate, delay, text)
   }
@@ -299,8 +299,8 @@ export class Page {
 
     for (let i = 0; i < text.length; i++) {
       let char = text[i]
-      if (char in Page._TEXT_ENCODING) {
-        bytesOut[i] = Page._TEXT_ENCODING[char]
+      if (char in this._TEXT_ENCODING) {
+        bytesOut[i] = this._TEXT_ENCODING[char]
       } else {
         badChars.add(char)
       }
@@ -313,7 +313,7 @@ export class Page {
   static decodeText(bytes) {
     let text = ''
     for (let byte of bytes) {
-      if (byte in Page._TEXT_DECODING) text += Page._TEXT_DECODING[byte]
+      if (byte in this._TEXT_DECODING) text += this._TEXT_DECODING[byte]
       else text += '\uFFFD'
     }
 
@@ -541,9 +541,10 @@ export class DisplayMessage extends Message {
         if (!page.length) throw new RangeError(`Unexpected byte value ${byte} at index ${index}`)
         pages.push(page)
         page = []
-        if (index < bytes.length - 1) {
-          // Readahead to get the next PAGE_START if available
-          if (bytes[++index] !== this._PAGE_START) throw new RangeError(`Unexpected byte value ${byte} at index ${index}`)
+        // Readahead to get the next PAGE_START if available
+
+        if (index < bytes.length - 1 && bytes[++index] !== this._PAGE_START) {
+          throw new RangeError(`Unexpected byte value ${byte} at index ${index}`)
         }
       } else page.push(byte)
     }
