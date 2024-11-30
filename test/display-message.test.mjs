@@ -27,7 +27,7 @@ describe('The DisplayMessage class', () => {
     it('Should split the pages using 0x0D and 0x01', () => {
       let bytes = Buffer.from([
         0x00, 0x44, 0x00, // header
-        
+
         /* First page */
         0x1D, // animate byte
         0x01, // offset byte
@@ -61,7 +61,7 @@ describe('The DisplayMessage class', () => {
     it('Should raise an unexpected byte value error if a page is not started with 0x01', () => {
       let bytes = Buffer.from([
         0x00, 0x44, 0x00, // header
-        
+
         /* First page */
         0x1D, // animate byte
         0x01, // offset byte
@@ -87,7 +87,7 @@ describe('The DisplayMessage class', () => {
     it('Should raise an unexpected end of data if the page is not terminated with 0x0D', () => {
       let bytes = Buffer.from([
         0x00, 0x44, 0x00, // header
-        
+
         /* First page */
         0x1D, // animate byte
         0x01, // offset byte
@@ -106,6 +106,64 @@ describe('The DisplayMessage class', () => {
       ])
 
       expect(() => DisplayMessage.fromBytes(bytes, 0x00)).to.throw(/Unexpected end of data/)
+    })
+  })
+
+  describe('The toString method', () => {
+    it('Should produce a string representing the message data', () => {
+      let bytes = Buffer.from([
+        0x00, 0x44, 0x00, // header
+
+        /* First page */
+        0x1D, // animate byte
+        0x01, // offset byte
+        35, // delay byte
+        0x00,
+        0x48, 0x65, 0x6c, 0x6c, 0x6f, 0x20, 0x57, 0x6f, 0x72, 0x6c, 0x64, // Text data
+
+        0x0D, 0x01, // page separator
+
+        /* Second page */
+        0x1D, // animate byte
+        0x00, // offset byte
+        20, // delay byte
+        0x00,
+        0x48, 0x65, 0x6c, 0x6c, 0x6f, 0x20, 0x57, 0x6f, 0x72, 0x6c, 0x64, // Text data
+
+        0x0D // End of second page
+      ])
+
+      let message = DisplayMessage.fromBytes(bytes, 0x00)
+      expect(message.toString()).to.equal('V35^_Hello World|V20^Hello World')
+    })
+  })
+
+  describe('The toBytes method', () => {
+    it('Should join the pages with 0x0D 0x01 and terminate with 0x0D', () => {
+      let expected = [
+        0x00, 0x44, 0x00, // header
+
+        /* First page */
+        0x1D, // animate byte
+        0x01, // offset byte
+        35, // delay byte
+        0x00,
+        0x48, 0x65, 0x6c, 0x6c, 0x6f, 0x20, 0x57, 0x6f, 0x72, 0x6c, 0x64, // Text data
+
+        0x0D, 0x01, // page separator
+
+        /* Second page */
+        0x1D, // animate byte
+        0x00, // offset byte
+        20, // delay byte
+        0x00,
+        0x48, 0x65, 0x6c, 0x6c, 0x6f, 0x20, 0x57, 0x6f, 0x72, 0x6c, 0x64, // Text data
+
+        0x0D // End of second page
+      ]
+
+      let message = DisplayMessage.fromStr('V35^_Hello World|V20^Hello World', 0x00)
+      expect([ ...message.toBytes() ]).to.deep.equal(expected)
     })
   })
 })

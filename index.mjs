@@ -554,6 +554,20 @@ export class DisplayMessage extends Message {
     return new DisplayMessage(pages.map(page => Page.fromBytes(Buffer.from(page))), address)
   }
 
-  toBytes() {}
+  toString() {
+    return this.#pages.map(page => page.toString()).join(this.constructor._PAGE_SEP)
+  }
+
+  toBytes() {
+    let pageBytes = this.#pages
+      .map(page => page.toBytes())
+      .reduce((acc, e) => [...acc, this.constructor._PAGE_END, this.constructor._PAGE_START, ...e] ,[]).slice(2)
+
+    return Buffer.from([
+      ...this.constructor.marker(this.#address),
+      ...pageBytes,
+      this.constructor._PAGE_END
+    ])
+  }
 
 }
