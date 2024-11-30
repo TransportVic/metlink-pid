@@ -261,6 +261,34 @@ export class Page {
     ])
   }
 
+  static fromBytes(bytes) {
+    if (bytes.length < 4) throw new RangeError('Not enough bytes for a Page')
+    if (!(bytes[0] in Page._ANIMATE_DECODING)) throw new RangeError(`Unexpected animate byte value ${bytes[0].toString(16)} at index 0`)
+    let animate = Page._ANIMATE_DECODING[bytes[0]]
+    let offset = bytes[1]
+    let delay = bytes[2]
+    if (bytes[3] !== 0x00) throw new RangeError(`unexpected byte value ${bytes_in[3].toString(16)} at index 3`)
+
+    let rawText = [ ...bytes.subarray(4) ]
+    while (rawText[rawText.length - 1] === Page._NEWLINE_BYTESEQ) rawText.pop() // Right trim the newline characters
+    let lines = []
+    let line = []
+    for (let char of rawText) {
+      if (char === Page._NEWLINE_BYTESEQ) {
+        lines.push(line)
+        line = []
+      } else line.push(char)
+    }
+
+    lines.push(line)
+
+    let text = Array(offset).fill(Page._NEWLINE_CHAR).join('') + lines
+      .map(line => Page.decodeText(line).replace(/ +$/).replace(Page._RIGHT_CHAR_ENCODED, Page._RIGHT_CHAR_DECODED))
+      .join(Page._NEWLINE_CHAR)
+
+    return new Page(animate, delay, text)
+  }
+
   /**
    Convert a string of characters into a string of display-level bytes. Called from the :meth:`to_bytes` method.
    * @param {string} text The string for display
@@ -280,6 +308,16 @@ export class Page {
 
     if (badChars.length > 0) throw new RangeError(`${badChars.entries().join(', ')} not in allowed characters`)
     return bytesOut
+  }
+
+  static decodeText(bytes) {
+    let text = ''
+    for (let byte of bytes) {
+      if (byte in Page._TEXT_DECODING) text += Page._TEXT_DECODING[byte]
+      else text += '\uFFFD'
+    }
+
+    return text
   }
 
 }

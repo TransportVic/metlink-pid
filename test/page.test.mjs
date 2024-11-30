@@ -93,6 +93,41 @@ describe('The Page constants', () => {
     })
   })
 
+  describe('The fromBytes method', () => {
+    it('Should parse a series of bytes back into a Page', () => {
+      let expected = [
+        0x1D, // animate byte
+        0x01, // offset byte
+        35, // delay byte
+        0x00,
+        0x48, 0x65, 0x6c, 0x6c, 0x6f, 0x20, 0x57, 0x6f, 0x72, 0x6c, 0x64 // Text data
+      ]
+
+      let page = Page.fromBytes(Buffer.from(expected))
+      expect(page.getAnimate().toString()).to.equal(PageAnimate.VSCROLL.toString())
+      expect(page.getDelay()).to.equal(35)
+      expect(page.getText()).to.equal('_Hello World')
+    })
+
+    it('Should right trim any trailing newline characters, and replacement intermediate ones with _', () => {
+      let expected = [
+        0x1D, // animate byte
+        0x00, // offset byte
+        35, // delay byte
+        0x00,
+        0x48, 0x65, 0x6c, 0x6c, 0x6f, 0x20, 0x57, 0x6f, 0x72, 0x6c, 0x64, // Text data
+        0x0A,
+        0x48, 0x65, 0x6c, 0x6c, 0x6f, 0x20, 0x57, 0x6f, 0x72, 0x6c, 0x64,
+        0x5c, 0x52, // Right align
+        0x48, // H
+        0x0A, 0x0A, 0x0A
+      ]
+
+      let page = Page.fromBytes(Buffer.from(expected))
+      expect(page.getText()).to.equal('Hello World_Hello World~H')
+    })
+  })
+
   describe('The encodeText method', () => {
     it('Should convert an ASCII string to its ASCII values', () => {
       let expected = [ 0x48, 0x65, 0x6c, 0x6c, 0x6f, 0x20, 0x57, 0x6f, 0x72, 0x6c, 0x64 ]
@@ -100,8 +135,20 @@ describe('The Page constants', () => {
     })
 
     it('Should convert unicode characters to their encoded values', () => {
-      let expected = [0x54, 0x65, 0x73, 0x74, 0xD2 ]
+      let expected = [ 0x54, 0x65, 0x73, 0x74, 0xD2 ]
       expect(Page.encodeText('Test━')).to.deep.equal(expected)
+    })
+  })
+
+  describe('The decodeText method', () => {
+    it('Should convert an ASCII values back to its ASCII string', () => {
+      let expected = [ 0x48, 0x65, 0x6c, 0x6c, 0x6f, 0x20, 0x57, 0x6f, 0x72, 0x6c, 0x64 ]
+      expect(Page.decodeText(Buffer.from(expected))).to.deep.equal('Hello World')
+    })
+
+    it('Should convert encoded values back to their unicode characters', () => {
+      let expected = [ 0x54, 0x65, 0x73, 0x74, 0xD2 ]
+      expect(Page.decodeText(Buffer.from(expected))).to.deep.equal('Test━')
     })
   })
 })
