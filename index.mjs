@@ -713,7 +713,7 @@ export class PID {
 
    * @param {*} data a string, `Message` object, or `Buffer` object.
    */
-  send(data) {
+  async send(data) {
     if (typeof data === 'string') data = DisplayMessage.fromStr(data, this.#address)
     if (data instanceof Message) data = data.toBytes()
 
@@ -723,7 +723,14 @@ export class PID {
       data = encode(Buffer.from([ ...data, ...crc(data) ]))
     }
 
-    this.#serial.write(data)
+    await new Promise(r => this.#serial.write(data, r))
   }
 
+  async ping() {
+    await self.send(new PingMessage(undefined, this.#address))
+  }
+
+  async close() {
+    await new Promise(r => this.#serial.close(r))
+  }
 }
