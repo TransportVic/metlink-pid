@@ -1,4 +1,4 @@
-import { Page } from '../index.mjs'
+import { Page, PageAnimate } from '../index.mjs'
 import { expect } from 'chai'
 
 describe('The Page constants', () => {
@@ -53,6 +53,22 @@ describe('The Page constants', () => {
       expect(data.animate).to.equal('V')
       expect(data.delay).to.equal('')
       expect(data.text).to.equal('hello')
+    })
+  })
+
+  describe('The Page fromStr method', () => {
+    it('Should parse the input string and set the values accordingly', () => {
+      let page = Page.fromStr('V^12:34')
+      expect(page.getAnimate().toString()).to.equal(PageAnimate.VSCROLL.toString())
+      expect(page.getDelay()).to.equal(20)
+      expect(page.getText()).to.equal('12:34')
+    })
+
+    it('Should parse the input string with a delay but no animation type', () => {
+      let page = Page.fromStr('40^test')
+      expect(page.getAnimate().toString()).to.equal(PageAnimate.NONE.toString())
+      expect(page.getDelay()).to.equal(40)
+      expect(page.getText()).to.equal('test')
     })
   })
 })

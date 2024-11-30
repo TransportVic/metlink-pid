@@ -18,7 +18,7 @@ export class PageAnimate {
     
     Page delay commences immediately.
    */
-  static NONE = 'N'
+  static NONE = new PageAnimate('N')
 
   /**
    * Scroll vertically into view from the bottom,
@@ -28,7 +28,7 @@ export class PageAnimate {
     
     Page delay commences as soon as the text is fully displayed.
    */
-  static VSCROLL = 'V'
+  static VSCROLL = new PageAnimate('V')
 
   /**
    * Scroll horizontally into view from the right,
@@ -38,7 +38,17 @@ export class PageAnimate {
     Page delay commences after all scrolling text becomes fully invisible,
     so usually a delay of ``0`` is desired in conjunction with `HSCROLL`.
    */
-  static HSCROLL = 'H'
+  static HSCROLL = new PageAnimate('H')
+
+  #animate
+
+  constructor(type) {
+    this.#animate = type.toUpperCase()
+  }
+
+  toString() {
+    return this.#animate
+  }
 }
 
 export class Page {
@@ -170,6 +180,52 @@ export class Page {
     this.#animate = animate
     this.#delay = delay
     this.#text = text
+  }
+
+  getAnimate() { return this.#animate }
+  getDelay() { return this.#delay }
+  getText() { return this.#text }
+
+  /**
+  Construct a `Page` object from a string representation.
+
+  @param {string} string a string in one of the following formats:
+      -   ``<text>``
+      -   ``^<text>``
+      -   ``<animate>^<text>``
+      -   ``<delay>^<text>``
+      -   ``<animate><delay>^<text>``
+
+      where:
+
+      -   ``<animate>`` is the string value of the desired `PageAnimate` value
+          (e.g. ``N`` for `PageAnimate.NONE`);
+      -   ``<delay>`` is the desired ``delay`` value; and
+      -   ``<text>`` is the desired ``text`` value.
+
+      For reference, such a string can also be obtained
+      by converting an existing `Page` object to a string using the .toString() method:
+
+      > new Page(PageAnimate.VSCROLL, 40, '12:34 FUNKYTOWN\~5_Limited Express').toString()
+      'V40^12:34 FUNKYTOWN\~5_Limited Express'
+
+  @param {string} [default_animate=PageAnimate.NONE] the ``animate`` value to use if one is not provided in the string. Defaults to `PageAnimate.NONE`.
+
+  @param {number} [default_delay=20] the ``delay`` value to use if one is not provided in the string. Defaults to ``20``.
+
+  :raise ValueError:
+      if the text contains unusable characters,
+      or if a valid `PageAnimate` value is not given,
+      or if the delay is outside the permissible range. */
+  static fromStr(string, default_animate = PageAnimate.NONE, default_delay = 20) {
+    let match = string.match(this._STR_RE)
+    let animate = default_animate
+    let delay = default_delay
+
+    if (match.groups.animate) animate = new PageAnimate(match.groups.animate)
+    if (match.groups.delay) delay = parseInt(match.groups.delay)
+
+    return new Page(animate, delay, match.groups.text)
   }
 
 }
