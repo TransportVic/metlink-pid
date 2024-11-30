@@ -1,4 +1,6 @@
 import { SerialPort } from 'serialport'
+import { crc, verify } from './crc.mjs'
+import { decode, encode } from './dlestxetx.mjs'
 
 /**
  * The `PageAnimate` class holds constants
@@ -568,6 +570,102 @@ export class DisplayMessage extends Message {
       ...pageBytes,
       this.constructor._PAGE_END
     ])
+  }
+
+}
+
+/**
+  A `PID` object represents a serial connection to a physical display.
+
+  `PID` objects are typically constructed using the `PID.forDevice` class method,
+  and can send messages in the form of `Message` objects, strings, or raw `bytes`
+  using the `send` method.
+  It is possible to `ping` the display at regular intervals
+  to persist the currently-displayed message.
+
+  `PID` objects also manage the CRC checksumming & DLE/STX/ETX packet framing
+  used by the display in what it receives & transmits,
+  and ensure that every instruction sent to the display
+  is acknowledged.
+
+ */
+export class PID {
+
+  #serial
+  #ignoreResponses
+  #address
+
+  /**
+   * Constructs a new PID instance.
+   * 
+   * @param {SerialPort} serial a `serialport.SerialPort` object. In normal use a correctly configured one is set by `PID.forDevice`.
+   * @param {boolean} [ignoreResponses=false] whether to ignore the response from the PID whenever `PID.send` is called. Defaults to ``false``.
+   * @param {int} [address=0x01] the address of the PID. Allows for one controller to control multiple PIDs.
+   */
+  constructor(serial, ignoreResponses = false, address = 0x01) {
+    this.#serial = serial
+    this.#ignoreResponses = ignoreResponses
+    this.#address = address
+  }
+
+  /**
+    Construct a `PID` object connected to the specified serial device
+    with a correctly configured `serialport.Serial` object.
+
+    The `serialport.Serial` object is configured to time out after 500ms
+    during read operations,
+    which is ample time for the display to send acknowledgement
+    after being written to.
+
+   * @param {string} port the serial device name, such as ``/dev/ttyUSB0`` on Linux or ``COM1`` on Windows.
+    The correct device name can be found on Linux by unplugging and re-plugging the display connection,
+    running ``dmesg``, and inspecting the output for the device name.
+   * @param {boolean} [ignoreResponses] whether to ignore the response from the PID whenever `PID.send` is called. Defaults to ``false``.
+   * @param {int} [address] the address of the PID. Allows for one controller to control multiple PIDs.
+   */
+  static forDevice(port, ignoreResponses, address) {
+    return new PID(
+      new SerialPort({ path: port, baudRate: 9600, autoOpen: false }),
+      ignoreResponses,
+      address
+    )
+  }
+
+  /**
+  Send data to the display---most typically message data,
+  although any `bytes` data can be sent.
+
+  -   If a string is provided,
+      it is converted to a `DisplayMessage` object using `DisplayMessage.fromStr`,
+      then `DisplayMessage.toBytes`,
+      then CRC-checksummed and packet-framed before sending.
+
+  -   If a `Message` object is provided
+      (usually a `DisplayMessage` but sometimes a `PingMessage`),
+      it is converted `Message.toBytes`,
+      then CRC-checksummed and packet-framed before sending.
+
+  -   If a `bytes` object is provided that **is not** a valid DLE/STX/ETX packet
+      (``\\x10\\x02 ··· \\x10\\x03``),
+      the bytes are CRC-checksummed and packet-framed before sending.
+
+  -   If a `bytes` object is provided that **is** a valid DLE/STX/ETX packet,
+      the packet is assumed to already contain a correct CRC checksum
+      and sent without change.
+
+   * @param {*} data a string, `Message` object, or `Buffer` object.
+   */
+  send(data) {
+    if (typeof data === 'string') data = DisplayMessage.fromStr(data, this.#address)
+    if (data instanceof Message) data = data.toBytes()
+
+    try {
+      decode(data)
+    } catch (e) {
+      data = encode(Buffer.from([ ...data, crc(data) ]))
+    }
+
+    this.#serial.write(data)
   }
 
 }
