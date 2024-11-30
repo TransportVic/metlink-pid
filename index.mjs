@@ -157,7 +157,7 @@ export class Page {
 
     @param {PageAnimate} animate the type of animation to take place on page entry, given as a `PageAnimate` constant.
 
-    @param {int} delay the length of time (in approximately quarter-seconds) to delay display of the next page after animation completes, given as an `int` between ``0`` and ``255`` inclusive.
+    @param {int} delay the length of time (approximately in seconds) to delay display of the next page after animation completes, given as an `int` between ``0`` and ``64`` inclusive.
 
     @param {string} text the text to display on the page. All ASCII letters & numbers, the ASCII space character, and these other printable ASCII characters can be used freely:
                ```
@@ -239,13 +239,13 @@ export class Page {
 
   @param {string} [default_animate=PageAnimate.NONE] the ``animate`` value to use if one is not provided in the string. Defaults to `PageAnimate.NONE`.
 
-  @param {number} [default_delay=20] the ``delay`` value to use if one is not provided in the string. Defaults to ``20``.
+  @param {number} [default_delay=5] the ``delay`` value to use if one is not provided in the string. Defaults to ``5``.
 
   :raise ValueError:
       if the text contains unusable characters,
       or if a valid `PageAnimate` value is not given,
       or if the delay is outside the permissible range. */
-  static fromStr(string, default_animate = PageAnimate.NONE, default_delay = 20) {
+  static fromStr(string, default_animate = PageAnimate.NONE, default_delay = 5) {
     let match = string.match(this._STR_RE)
     let animate = default_animate
     let delay = default_delay
@@ -275,7 +275,7 @@ export class Page {
   toBytes() {
     let animateByte = this.constructor._ANIMATE_ENCODING[this.#animate.toString()]
     let offsetByte = this.#text.match(/^(_+)/)?.[0].length || 0
-    let delayByte = this.#delay
+    let delayByte = this.#delay * 4
     let textBytes = this.#text.slice(offsetByte).split(this.constructor._NEWLINE_CHAR)
       .map(line => {
         if (!line.includes(this.constructor._RIGHT_CHAR_DECODED)) return this.constructor.encodeText(line)
@@ -325,7 +325,8 @@ export class Page {
     if (!(bytes[0] in this._ANIMATE_DECODING)) throw new RangeError(`Unexpected animate byte value ${bytes[0].toString(16)} at index 0`)
     let animate = this._ANIMATE_DECODING[bytes[0]]
     let offset = bytes[1]
-    let delay = bytes[2]
+    let delay = Math.round(bytes[2] / 4)
+
     if (bytes[3] !== 0x00) throw new RangeError(`unexpected byte value ${bytes_in[3].toString(16)} at index 3`)
 
     let rawText = [ ...bytes.subarray(4) ]
@@ -557,15 +558,15 @@ export class DisplayMessage extends Message {
     by converting an existing `DisplayMessage` object to a string
     using `str() <str>`:
 
-    >>> page1 = Page(animate=PageAnimate.VSCROLL, delay=40, text='12:34 FUNKYTOWN~5_Limited Express')
+    >>> page1 = Page(animate=PageAnimate.VSCROLL, delay=10, text='12:34 FUNKYTOWN~5_Limited Express')
     >>> page2 = Page(animate=PageAnimate.HSCROLL, delay=0, text='_Stops all stations except East Richard')
     >>> str(DisplayMessage([page1, page2]))
-    'V40^12:34 FUNKYTOWN~5_Limited Express|H0^_Stops all stations except East Richard'
+    'V10^12:34 FUNKYTOWN~5_Limited Express|H0^_Stops all stations except East Richard'
 
     Where any page string fails to specify an ``animate`` or ``delay`` value,
     these defaults will be applied:
 
-    - `Animate.VSCROLL` & ``delay=40`` for the first page; and
+    - `Animate.VSCROLL` & ``delay=10`` for the first page; and
     - `Animate.HSCROLL` & ``delay=0`` for subsequent pages.
 
     @param {int} address The device address this DisplayMessage is intended for
@@ -581,7 +582,7 @@ export class DisplayMessage extends Message {
       .map((string, i) => Page.fromStr(
         string,
         i === 0 ? PageAnimate.VSCROLL : PageAnimate.HSCROLL,
-        i === 0 ? 40 : 0
+        i === 0 ? 10 : 0
       )),
       address
     )

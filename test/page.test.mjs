@@ -60,7 +60,7 @@ describe('The Page constants', () => {
     it('Should parse the input string and set the values accordingly', () => {
       let page = Page.fromStr('V^12:34')
       expect(page.getAnimate().toString()).to.equal(PageAnimate.VSCROLL.toString())
-      expect(page.getDelay()).to.equal(20)
+      expect(page.getDelay()).to.equal(5)
       expect(page.getText()).to.equal('12:34')
     })
 
@@ -84,7 +84,7 @@ describe('The Page constants', () => {
       let expected = [
         0x1D, // animate byte
         0x01, // offset byte
-        35, // delay byte
+        35 * 4, // delay byte
         0x00,
         0x48, 0x65, 0x6c, 0x6c, 0x6f, 0x20, 0x57, 0x6f, 0x72, 0x6c, 0x64 // Text data
       ]
@@ -96,7 +96,7 @@ describe('The Page constants', () => {
       let expected = [
         0x1D, // animate byte
         0x00, // offset byte
-        35, // delay byte
+        35 * 4, // delay byte
         0x00,
         0x48, 0x65, 0x6c, 0x6c, 0x6f, 0x20, 0x57, 0x6f, 0x72, 0x6c, 0x64, // Text data
         0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20,
@@ -113,14 +113,14 @@ describe('The Page constants', () => {
       let expected = [
         0x1D, // animate byte
         0x01, // offset byte
-        35, // delay byte
+        10 * 4, // delay byte
         0x00,
         0x48, 0x65, 0x6c, 0x6c, 0x6f, 0x20, 0x57, 0x6f, 0x72, 0x6c, 0x64 // Text data
       ]
 
       let page = Page.fromBytes(Buffer.from(expected))
       expect(page.getAnimate().toString()).to.equal(PageAnimate.VSCROLL.toString())
-      expect(page.getDelay()).to.equal(35)
+      expect(page.getDelay()).to.equal(10)
       expect(page.getText()).to.equal('_Hello World')
     })
 
@@ -128,7 +128,7 @@ describe('The Page constants', () => {
       let expected = [
         0x1D, // animate byte
         0x00, // offset byte
-        35, // delay byte
+        10 * 4, // delay byte
         0x00,
         0x48, 0x65, 0x6c, 0x6c, 0x6f, 0x20, 0x57, 0x6f, 0x72, 0x6c, 0x64, // Text data
         0x0A,

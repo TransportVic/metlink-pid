@@ -7,7 +7,7 @@ describe('The DisplayMessage class', () => {
       let message = DisplayMessage.fromStr('12:34 FUNKYTOWN~5_Limited Express|_Stops all stations except East Richard')
       expect(message.getPages().length).to.equal(2)
       expect(message.getPages()[0].getAnimate().toString()).to.equal(PageAnimate.VSCROLL.toString())
-      expect(message.getPages()[0].getDelay()).to.equal(40)
+      expect(message.getPages()[0].getDelay()).to.equal(10)
       expect(message.getPages()[0].getText()).to.equal('12:34 FUNKYTOWN~5_Limited Express')
 
       expect(message.getPages()[1].getAnimate().toString()).to.equal(PageAnimate.HSCROLL.toString())
@@ -31,7 +31,7 @@ describe('The DisplayMessage class', () => {
         /* First page */
         0x1D, // animate byte
         0x01, // offset byte
-        35, // delay byte
+        10 * 4, // delay byte
         0x00,
         0x48, 0x65, 0x6c, 0x6c, 0x6f, 0x20, 0x57, 0x6f, 0x72, 0x6c, 0x64, // Text data
 
@@ -40,7 +40,7 @@ describe('The DisplayMessage class', () => {
         /* Second page */
         0x1D, // animate byte
         0x00, // offset byte
-        20, // delay byte
+        5 * 4, // delay byte
         0x00,
         0x48, 0x65, 0x6c, 0x6c, 0x6f, 0x20, 0x57, 0x6f, 0x72, 0x6c, 0x64, // Text data
 
@@ -50,11 +50,11 @@ describe('The DisplayMessage class', () => {
       let message = DisplayMessage.fromBytes(bytes, 0x00)
       expect(message.getPages().length).to.equal(2)
       expect(message.getPages()[0].getAnimate().toString()).to.equal(PageAnimate.VSCROLL.toString())
-      expect(message.getPages()[0].getDelay()).to.equal(35)
+      expect(message.getPages()[0].getDelay()).to.equal(10)
       expect(message.getPages()[0].getText()).to.equal('_Hello World')
 
       expect(message.getPages()[1].getAnimate().toString()).to.equal(PageAnimate.VSCROLL.toString())
-      expect(message.getPages()[1].getDelay()).to.equal(20)
+      expect(message.getPages()[1].getDelay()).to.equal(5)
       expect(message.getPages()[1].getText()).to.equal('Hello World')
     })
 
@@ -117,7 +117,7 @@ describe('The DisplayMessage class', () => {
         /* First page */
         0x1D, // animate byte
         0x01, // offset byte
-        35, // delay byte
+        10 * 4, // delay byte
         0x00,
         0x48, 0x65, 0x6c, 0x6c, 0x6f, 0x20, 0x57, 0x6f, 0x72, 0x6c, 0x64, // Text data
 
@@ -126,7 +126,7 @@ describe('The DisplayMessage class', () => {
         /* Second page */
         0x1D, // animate byte
         0x00, // offset byte
-        20, // delay byte
+        5 * 4, // delay byte
         0x00,
         0x48, 0x65, 0x6c, 0x6c, 0x6f, 0x20, 0x57, 0x6f, 0x72, 0x6c, 0x64, // Text data
 
@@ -134,7 +134,7 @@ describe('The DisplayMessage class', () => {
       ])
 
       let message = DisplayMessage.fromBytes(bytes, 0x00)
-      expect(message.toString()).to.equal('V35^_Hello World|V20^Hello World')
+      expect(message.toString()).to.equal('V10^_Hello World|V5^Hello World')
     })
   })
 
@@ -146,7 +146,7 @@ describe('The DisplayMessage class', () => {
         /* First page */
         0x1D, // animate byte
         0x01, // offset byte
-        35, // delay byte
+        35 * 4, // delay byte
         0x00,
         0x48, 0x65, 0x6c, 0x6c, 0x6f, 0x20, 0x57, 0x6f, 0x72, 0x6c, 0x64, // Text data
 
@@ -155,7 +155,7 @@ describe('The DisplayMessage class', () => {
         /* Second page */
         0x1D, // animate byte
         0x00, // offset byte
-        20, // delay byte
+        20 * 4, // delay byte
         0x00,
         0x48, 0x65, 0x6c, 0x6c, 0x6f, 0x20, 0x57, 0x6f, 0x72, 0x6c, 0x64, // Text data
 
