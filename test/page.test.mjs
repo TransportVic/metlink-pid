@@ -56,7 +56,7 @@ describe('The Page constants', () => {
     })
   })
 
-  describe('The Page fromStr method', () => {
+  describe('The fromStr method', () => {
     it('Should parse the input string and set the values accordingly', () => {
       let page = Page.fromStr('V^12:34')
       expect(page.getAnimate().toString()).to.equal(PageAnimate.VSCROLL.toString())
@@ -69,6 +69,39 @@ describe('The Page constants', () => {
       expect(page.getAnimate().toString()).to.equal(PageAnimate.NONE.toString())
       expect(page.getDelay()).to.equal(40)
       expect(page.getText()).to.equal('test')
+    })
+  })
+  
+  describe('The toString method', () => {
+    it('Should return a string representing the Page', () => {
+      let page = new Page(PageAnimate.VSCROLL, 40, '12:34 FUNKYTOWN~5_Limited Express')
+      expect(page.toString()).to.equal('V40^12:34 FUNKYTOWN~5_Limited Express')
+    })
+  })
+
+  describe('The toBytes method', () => {
+    it('Should convert the page attributes into byte data', () => {
+      let expected = [
+        0x1D, // animate byte
+        0x01, // offset byte
+        35, // delay byte
+        0x00,
+        0x48, 0x65, 0x6c, 0x6c, 0x6f, 0x20, 0x57, 0x6f, 0x72, 0x6c, 0x64 // Text data
+      ]
+      let page = Page.fromStr('V35^_Hello World')
+      expect([ ...page.toBytes() ]).to.deep.equal(expected)
+    })
+  })
+
+  describe('The encodeText method', () => {
+    it('Should convert an ASCII string to its ASCII values', () => {
+      let expected = [ 0x48, 0x65, 0x6c, 0x6c, 0x6f, 0x20, 0x57, 0x6f, 0x72, 0x6c, 0x64 ]
+      expect(Page.encodeText('Hello World')).to.deep.equal(expected)
+    })
+
+    it('Should convert unicode characters to their encoded values', () => {
+      let expected = [0x54, 0x65, 0x73, 0x74, 0xD2 ]
+      expect(Page.encodeText('Test━')).to.deep.equal(expected)
     })
   })
 })

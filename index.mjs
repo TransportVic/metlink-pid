@@ -226,6 +226,60 @@ export class Page {
     if (match.groups.delay) delay = parseInt(match.groups.delay)
 
     return new Page(animate, delay, match.groups.text)
+
+  }
+
+  /**
+    Gets The string representation of this object.
+
+    @returns {string} A string, that when passed to `Page.from_str` will yield an equivalent `Page` object to this one.
+   */
+  toString() {
+    return this.#animate.toString() + this.#delay + Page._ATTRS_SEP + this.#text
+  }
+
+  /**
+    The raw byte representation of the `Page` as understood by the display.
+
+    Used by `DisplayMessage.toBytes`
+    when preparing to `PID.send()` a complete `DisplayMessage` to the display.
+   */
+  toBytes() {
+    let animateByte = Page._ANIMATE_ENCODING[this.#animate.toString()]
+    let offsetByte = this.#text.match(/^(_+)/)?.[0].length || 0
+    let delayByte = this.#delay
+    let textBytes = this.#text.slice(offsetByte).split(Page._NEWLINE_CHAR)
+      .map(line => Page.encodeText(line.replace(Page._RIGHT_CHAR_DECODED, Page._RIGHT_CHAR_ENCODED)))
+      .reduce((acc, e) => [...acc, 0x0A, ...e] ,[]).slice(1)
+
+    return Buffer.from([
+      animateByte,
+      offsetByte,
+      delayByte,
+      0x00,
+      ...textBytes
+    ])
+  }
+
+  /**
+   Convert a string of characters into a string of display-level bytes. Called from the :meth:`to_bytes` method.
+   * @param {string} text The string for display
+   */
+  static encodeText(text) {
+    let bytesOut = Array(text.length)
+    let badChars = new Set()
+
+    for (let i = 0; i < text.length; i++) {
+      let char = text[i]
+      if (char in Page._TEXT_ENCODING) {
+        bytesOut[i] = Page._TEXT_ENCODING[char]
+      } else {
+        badChars.add(char)
+      }
+    }
+
+    if (badChars.length > 0) throw new RangeError(`${badChars.entries().join(', ')} not in allowed characters`)
+    return bytesOut
   }
 
 }
