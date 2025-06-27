@@ -737,7 +737,7 @@ export class PID {
     this.#serial.write(data)
     await new Promise(r => this.#serial.drain(r))
 
-    if (!this.#ignoreResponses && false) {
+    if (!this.#ignoreResponses) {
       await new Promise(r => setTimeout(r), 100)
       let response = verify(decode(Buffer.from(this.#readBuffer)))
       this.#readBuffer = []
