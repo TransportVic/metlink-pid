@@ -1,6 +1,7 @@
 import { SerialPort } from 'serialport'
 import { crc, verify } from './crc.mjs'
 import { decode, encode } from './dlestxetx.mjs'
+import EventEmitter from 'events'
 
 /**
  * The `PageAnimate` class holds constants
@@ -649,7 +650,7 @@ export class DisplayMessage extends Message {
   is acknowledged.
 
  */
-export class PID {
+export class PID extends EventEmitter {
 
   #serial
   #ignoreResponses
@@ -665,6 +666,7 @@ export class PID {
    * @param {int} [address=0x01] the address of the PID. Allows for one controller to control multiple PIDs.
    */
   constructor(serial, ignoreResponses = false, address = 0x01) {
+    super()
     this.#serial = serial
     this.#ignoreResponses = ignoreResponses
     this.#address = address
@@ -675,6 +677,8 @@ export class PID {
       let parsedData = [ ...data ].map(char => (0xFF - char) >> 1)
       this.#readBuffer.push(...parsedData)
     })
+
+    serial.on('error', err => this.emit('error', err))
   }
 
   /**
